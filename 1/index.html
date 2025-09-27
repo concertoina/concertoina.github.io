@@ -1,69 +1,232 @@
-<!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="utf-8">
-  <title>Project 1</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    figure { justify-self: left; }     
-    figure img { max-width: 420px; }  
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Project: Prokudin‑Gorskii Alignment</title>
+<style>
+:root {
+--fg: #1f2937; /* slate-800 */
+--muted: #6b7280; /* gray-500 */
+--border: #e5e7eb; /* gray-200 */
+--link: #2563eb; /* blue-600 */
+}
+html, body { margin: 0; padding: 0; }
+body {
+font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+color: var(--fg);
+background: #fff;
+}
+.container { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+header { margin-bottom: 1.5rem; }
+h1 { font-size: 1.8rem; margin: 0 0 0.25rem; }
+header p { margin: 0; color: var(--muted); }
+
+nav { margin: 1rem 0 2rem; }
+nav a { margin-right: 1rem; color: var(--link); text-decoration: none; }
+nav a:hover { text-decoration: underline; }
+
+section { margin: 2rem 0; }
+h2 { font-size: 1.4rem; margin: 0 0 0.75rem; }
+h3 { font-size: 1.1rem; margin-top: 1.25rem; }
+p, li { max-width: 70ch; }
+
+/* Figures / images */
+figure { margin: 0; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px; background: #fff; }
+figure img { width: 100%; height: auto; display: block; }
+figcaption { margin-top: 0.5rem; font-size: 0.9rem; color: var(--muted); }
+
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; max-width: 100%; }
+th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+th { background: #f9fafb; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+
+.note { color: var(--muted); font-size: 0.95rem; }
+.muted { color: var(--muted); }
+.small { font-size: 0.9rem; }
+
+
+/* Optional narrow layout tweak */
+@media (max-width: 640px) {
+.pair { grid-template-columns: 1fr; }
+}
+</style>
 </head>
+
+<!--Start of Body-->
 <body>
-  <h1>Project 1</h1>
+    <div class="container">
+        <header>
+            <h1>Prokudin‑Gorskii Image Alignment</h1>
+        </header>
 
-  <section class="card" id="part1">
-<h2>Part 1 — Selfie: The Wrong Way vs. The Right Way</h2>
-<p>Three selfies, taken at increasingly further distances and greater zooms. As we step back, notice that the geometric distortion of the faces decreases.</p>
-<div class="grid g3" style="align-items:start">
-    <figure>
-        <img src="media/Selfie-Close.jpg"  />
-        <figcaption><strong>Close, wide-angle selfie.</strong> Very noticable distortion, with larger central nose and a receding background.</figcaption>
-    </figure>
-    <figure>
-        <img src="media/Selfie-Mid.JPG"  />
-        <figcaption><strong>Typical selfie</strong> Less exaggerated proportions.</figcaption>
-    </figure>
-    <figure>
-        <img src="media/Selfie-Far.jpg"  />
-        <figcaption><strong>Zoomed in selfie.</strong> Almost no distortion, face is noticeably flatter than before.</figcaption>
-    </figure>
-</div>
+
+<nav aria-label="On‑page navigation">
+    <a href="#overview">Overview</a>
+    <a href="#simple approach">Simple Approach</a>
+    <a href="#simple problems">Simple Problems</a>
+    <a href="#pyramid approach">Pyramid Approach</a>
+    <a href="#pyramid problems">Pyramid Problems</a>
+    <a href="#failures">Failures</a>
+    <a href="#results-custom">Custom Results</a>
+</nav>
+
+
+<section id="overview">
+<h2>Brief Overview</h2>
+<p>
+This project aligns RGB channels from Prokudin‑Gorskii glass plate scans to reconstruct color photographs. I implemented a baseline
+exhaustive search and a coarse-to-fine pyramid alignment to handle larger displacements efficiently. 
+</p>
 </section>
 
 
-<section class="card" id="part2">
-<h2>Part 2 — Architectural Perspective Compression</h2>
-<p>Street photographed at two different zooms and distances.</p>
-<div class="grid g2">
+<section id="simple approach">
+<h2>Small-Scale Approach</h2>
+
+
+<h3 id="single-scale">Single‑Scale Alignment (Baseline)</h3>
+<p>
+I align the <code>G</code> and <code>R</code> channels to the base <code>B</code> channel using an exhaustive
+pixel search in a window (default radius : ±15 px). Before scoring, I crop 10% from each border to avoid
+artifacts from the edge distorting our result. The similarity metric used <em>Normalized Cross‑Correlation (NCC)</em>. For each candidate shift <code>(dx, dy)</code> 
+within our radius, I compute the score on the interior region and keep the best‑scoring offsets for <code>G→B</code> and <code>R→B</code>.
+</p>
+
+
+<div class="grid">
 <figure>
-<img src="media/Street-Far.jpg" />
-<figcaption><strong>Far distance + more zoom.</strong> The distance between cars and objects is small relative to distance from the camera, so the scene feels compressed.</figcaption>
+<img src="images/cathedral_color.png" alt="Single‑scale alignment example 1" >
+<figcaption><strong>Cathedral</strong> — G: <code>(dx=5, dy=2)</code>, R: <code>(dx=12, dy=3)</code>;</figcaption>
 </figure>
 <figure>
-<img src="media/Street-Close.jpg" />
-<figcaption><strong>Small distance + no zoom.</strong> "Depth" is more visible and apparant at a shorter distance.</figcaption>
+<img src="images/monastery_color.png" alt="Single‑scale alignment example 2" >
+<figcaption><strong>Monastery</strong> — G: <code>(dx=-3, dy=2)</code>, R: <code>(dx=3, dy=2)</code>;</figcaption>
+</figure>
+<figure>
+<img src="images/tobolsk_color.png" alt="Single‑scale alignment example 3" >
+<figcaption><strong>Tobolsk</strong> — G: <code>(dx=6, dy=3)</code>, R: <code>(dx=3, dy=3)</code>;</figcaption>
 </figure>
 </div>
-<div class="why" style="margin-top:12px">
-<strong>Why the first looks flatter:</strong> When you shoot from farther away, the relative size change between near and far objects shrinks (their rays strike the sensor at closer angles). Zoom doesn’t cause compression by itself; it allows similar framing from a longer distance, which is what reduces the <em>relative</em> perspective differences.
+</section>
+
+<section id="simple problems">
+<h3>Problems & How I Addressed Them</h3>
+<ul>
+<li><strong>Issue:</strong> Initial Tests were pretty misaligned. <br><strong>Cause:</strong> My NCC score was ran on a smaller portion of our crop (no padding after shift). <br><strong>Fix:</strong> Implemented align_shift function, which padded outputs.</li>
+<li><strong>Issue:</strong> Recovered alignments were heavily biased to (0, 0) <br><strong>Cause:</strong> Our align method padded with zeroes, penalizing padding at all. <br><strong>Fix:</strong> We instead padded with the mean of the image to be shifted.</li>
+</section>
+<section id="pyramid approach">
+<h2>Pyramid Approach</h2>
+
+
+<h3 id="pyramid">Pyramid Alignment</h3>
+<p>
+The pyramid approach begins with us downscaling the large .tif files into coarser and coarser images,
+in our case a total of 5 layers. At each layer, run our simple align function with a few additions. First,
+we shrink our search radius at coarser resolutions so that these images do not disproportionately affect
+our displacements. In addition, our search radius is not centered around <code>(0, 0)</code> like before,
+but based on a guess <code>(gy, gx)</code> obtained from our previous layers.
+</p>
+
+
+<div class="grid">
+<figure>
+<img src="images/siren_color.png" alt="Pyramid alignment example 1" >
+<figcaption><strong>Siren</strong> — G: <code>(dx=49, dy=-6)</code>, R: <code>(dx=96, dy=-25)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/harvesters_color.png" alt="Pyramid alignment example 2" >
+<figcaption><strong>Harvesters</strong> — G: <code>(dx=59, dy=16)</code>, R: <code>(dx=123, dy=13)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/icon_color.png" alt="Pyramid alignment example 3" >
+<figcaption><strong>Icon</strong> — G: <code>(dx=41, dy=17)</code>, R: <code>(dx=89, dy=23)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/three_generations_color.png" alt="Pyramid alignment example 4" >
+<figcaption><strong>Three Generations</strong> — G: <code>(dx=53, dy=14)</code>, R: <code>(dx=111, dy=11)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/lastochikino_color.png" alt="Pyramid alignment example 5" >
+<figcaption><strong>Lastochikino</strong> — G: <code>(dx=-3, dy=-2)</code>, R: <code>(dx=75, dy=-9)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/church_color.png" alt="Pyramid alignment example 6" >
+<figcaption><strong>Church</strong> — G: <code>(dx=25, dy=4)</code>, R: <code>(dx=58, dy=-4)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/italil_color.png" alt="Pyramid alignment example 7" >
+<figcaption><strong>Italil</strong> — G: <code>(dx=38, dy=21)</code>, R: <code>(dx=76, dy=35)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/self_portrait_color.png" alt="Pyramid alignment example 8" >
+<figcaption><strong>Self Portrait</strong> — G: <code>(dx=79, dy=29)</code>, R: <code>(dx=169, dy=35)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/lugano_color.png" alt="Pyramid alignment example 9" >
+<figcaption><strong>Lugano</strong> — G: <code>(dx=41, dy=-16)</code>, R: <code>(dx=92, dy=-29)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/emir_color.png" alt="Pyramid alignment example 10" >
+<figcaption><strong>Emir</strong> — G: <code>(dx=49, dy=24)</code>, R: <code>(dx=103, dy=57)</code>;</figcaption>
+</figure>
+
+<figure>
+<img src="images/melons_color.png" alt="Pyramid alignment example 11" >
+<figcaption><strong>Melons</strong> — G: <code>(dx=81, dy=10)</code>, R: <code>(dx=169, dy=10)</code>;</figcaption>
+</figure>
 </div>
 </section>
-
-<section class="card" id="part3">
-  <h2>Part 3 — The Dolly Zoom (“Vertigo Shot”)</h2>
-  <p>A dolly zoom, with successive pictures being further from the scene while zooming in.</p>
-
-  <figure style="justify-self:center">
-    <img
-      src="media/ezgif.com-animated-gif-maker.gif"
-      loading="lazy" decoding="async"
-      style="max-width:420px;width:100%;height:auto"
-    >
-  </figure>
-
+<section id="pyramid problems">
+<h3>Problems & How I Addressed Them</h3>
+<ul>
+<li><strong>Issue:</strong> Runtime was too long. <br><strong>Partial Cause:</strong> NCC computing times were long. <br><strong>Fix:</strong> Changed input method for scoring/shifting to avoid repeat norm and mean calculations <br></li>
+<li><strong>Issue:</strong> Runtime was too long. <br><strong>Partial Cause:</strong> Excessive layers and large initial radius. <br><strong>Fix:</strong> Used these wide searches to identify alignment distribution. Optimized radius and layers by decreasing initial radius and removing radius decay. <br></li>
+<li><strong>Issue:</strong> Significant Misalignment in 'emir.tif' <br><strong>Cause:</strong> Coarse layers had to large an impact on the guess. The initial guess was so off that finer layers could not recover.
+     <br><strong>Fix:</strong> Re-added radius decay, and lowered the bottom floor for the search radius. <br></li>
+</section>
+<section id="failures">
+<h3>Analysis of the least aligned color images.</h3>
+<p>
+I found that most of the images I processed were aligned well. In fact, the images I found to be the most blurred were when we used single-scale alignment. This makes some sense, 
+as the coarsest level of our pyramids were smaller than the .jpg images. The finer resolution of the .tif files also allowed us to retain that precision in our final color images.
+Out of the larger images, I found the reflection images potentially misaligned, due to color patterns in the water, though this may be from the light and water interaction. Our scoring method,
+ NCC, does not take into account gradients or edges, only the brightness of each color. This means spotted patters seem a bit more blurry, which can be seen
+ in the emir.tif and upcoming sobor.tif images.
+</p>
 </section>
 
-  <p><a href="../index.html">← Back to projects</a></p>
-</body>
-</html>
+<section id="#results-custom">
+<h3>Alignments of My Favorite Pictures from the Prokudin‑Gorskii Library</h3>
+<div class="grid">
+<figure>
+<img src="images/waterfall_color.png" alt="Single‑scale alignment example 1" >
+<figcaption><strong>Waterfall</strong></figcaption>
+</figure>
+<figure>
+<img src="images/sunset_color.png" alt="Single‑scale alignment example 2" >
+<figcaption><strong>Sunset</strong></figcaption>
+</figure>
+<figure>
+<img src="images/sobor_color.png" alt="Single‑scale alignment example 3" >
+<figcaption><strong>Sobor</strong></figcaption>
+</figure>
+</div>
+</section>
+    
