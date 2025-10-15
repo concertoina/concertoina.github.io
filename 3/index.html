@@ -1,0 +1,396 @@
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Project: Prokudin‑Gorskii Alignment</title>
+<style>
+:root {
+--fg: #1f2937; /* slate-800 */
+--muted: #6b7280; /* gray-500 */
+--border: #e5e7eb; /* gray-200 */
+--link: #2563eb; /* blue-600 */
+}
+html, body { margin: 0; padding: 0; }
+body {
+font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+color: var(--fg);
+background: #fff;
+}
+.container { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+header { margin-bottom: 1.5rem; }
+h1 { font-size: 1.8rem; margin: 0 0 0.25rem; }
+header p { margin: 0; color: var(--muted); }
+
+nav { margin: 1rem 0 2rem; }
+nav a { margin-right: 1rem; color: var(--link); text-decoration: none; }
+nav a:hover { text-decoration: underline; }
+
+section { margin: 2rem 0; }
+h2 { font-size: 1.4rem; margin: 0 0 0.75rem; }
+h3 { font-size: 1.1rem; margin-top: 1.25rem; }
+p, li { max-width: 70ch; }
+
+/* Figures / images */
+figure { margin: 0; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px; background: #fff; }
+figure img { width: 100%; height: auto; display: block; }
+figcaption { margin-top: 0.5rem; font-size: 0.9rem; color: var(--muted); }
+
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; max-width: 100%; }
+th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+th { background: #f9fafb; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+
+.note { color: var(--muted); font-size: 0.95rem; }
+.muted { color: var(--muted); }
+.small { font-size: 0.9rem; }
+
+
+/* Optional narrow layout tweak */
+@media (max-width: 640px) {
+.pair { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<!--Start of Body-->
+<body>
+<header>
+<div class="wrap">
+<div class="title">
+<h1>Image Filtering & Multi‑Resolution Blending</h1>
+</div>
+<nav class="toc">
+<a href="#p11"><span>Part 1.1 — Perspective Images</span></a>
+<a href="#p12"><span>Part 1.2 — Recover Homographies</span></a>
+<a href="#p13"><span>Part 1.3 — Rectify Images</span></a>
+<a href="#p14"><span>Part 1.4 — Mosaics</span></a>
+</nav>
+</div>
+</header>
+
+<section id="p11">
+<h2>Perspective Images</h2>
+<p>
+I took three sets of images, making sure that rotation was the only difference between the three photos. The photos are below.
+<div class="grid">
+<figure>
+<img src="IMG_7318.jpg" />
+<figcaption>Hotel Left</figcaption>
+</figure>
+<figure>
+<img src="IMG_7319.jpg"  />
+<figcaption>Hotel Center</figcaption>
+</figure>
+
+<figure>
+<img src="IMG_7320.jpg" />
+<figcaption>Hotel Right</figcaption>
+</figure>
+
+</div>
+<div class="grid">
+<figure>
+<img src="IMG_7330.jpg"  />
+<figcaption>Field Left</figcaption>
+</figure>
+<figure>
+<img src="IMG_7329.jpg" />
+<figcaption>Field Center</figcaption>
+</figure>
+
+<figure>
+<img src="IMG_7331.jpg" />
+<figcaption>Field Right</figcaption>
+</figure>
+
+</div>
+<div class="grid">
+<figure>
+<img src="IMG_7338.jpg"  />
+<figcaption>Dock Left</figcaption>
+</figure>
+<figure>
+<img src="IMG_7337.jpg" />
+<figcaption>Dock Center</figcaption>
+</figure>
+
+<figure>
+<img src="IMG_7339.jpg" />
+<figcaption>Dock Right</figcaption>
+</figure>
+
+</div>
+</section>
+
+<section id="p12">
+<h2>Part 1.2 — Recover Homographies.</span></h2>
+<p class="lead">Using the student built tool for correspondences, I matched similar features in my images. Some examples are below.</p>
+<div class="grid">
+<figure>
+<img src="Screen Shot 2025-10-12 at 9.44.09 PM.png"  />
+<figcaption>Reference Image</figcaption>
+</figure>
+<figure>
+<img src="Screen Shot 2025-10-12 at 9.44.25 PM.png"/>
+<figcaption>Warping Image</figcaption>
+</figure>
+</div>
+<p>To recover the homographies, I used least squares regression. To build Matrices A and B for the system of equations, 
+    I calculated the the result of the homography mathematically. The code for this is follows.
+</p>
+<pre><code class="language-python">def conv_two_loops(img, kernel):
+    #Let h_11 be h[0], h_12 be h[1] ... and so on
+    #equations: x' = (h_11x + h_12y + h_13)/(h_31x+h_32y + 1), x' = h_11x + h_12y + h_13 - h_31xx' - h_32yx'
+    # resulting row in A should be [x, y, 1, 0, 0, 0, xx', yx']
+    #Similarly, for y', the matrix should be [0, 0, 0, x, y, 1, xy', yy']
+    xy1 = np.stack([x1, y1, np.ones(n)], axis = 1)
+
+    A[0:n, 0:3] = xy1
+    A[0:n, 6] = -x1*x2
+    A[0:n, 7] = -y1*x2
+    B[0:n] = x2
+
+    A[n:2*n, 3:6] = xy1
+    A[n:2*n, 6] = -x1*y2
+    A[n:2*n, 7] = -y1*y2
+    B[n:2*n] = y2
+
+    h, _, _, _ = np.linalg.lstsq(A, B, rcond=None)
+</code></pre>
+<p>
+    After using this code on my correspondences, we got the following result: <br><br>
+    im1_points: [
+    [494.0, 474.0],
+    [361.0, 483.0],
+    [260.0, 712.0],
+    [425.0,239.0],
+    ],
+    [
+      223.0,
+      158.0
+    ],
+    [
+      551.0,
+      688.0
+    ],
+    [
+      354.0,
+      683.0
+    ],
+    [
+      374.0,
+      682.0
+    ],
+    [
+      281.0,
+      589.0
+    ],
+    [
+      482.0,
+      34.0
+    ],
+    [
+      696.0,
+      710.0
+    ],
+    [
+      160.0,
+      806.0
+    ],
+    [
+      165.0,
+      730.0
+    ],
+    [
+      215.0,
+      552.0
+    ],
+    [
+      304.0,
+      627.0
+    ],
+    [
+      513.0,
+      1049.0
+    ],
+    [
+      337.0,
+      966.0
+    ],
+    [
+      170.0,
+      1147.0
+    ],
+    [
+      545.0,
+      925.0
+    ],
+    [
+      196.0,
+      616.0
+    ]
+  ].<br><br>
+  im2_points: [
+    [
+      776.0,
+      479.0
+    ],
+    [
+      642.0,
+      496.0
+    ],
+    [
+      536.0,
+      714.0
+    ],
+    [
+      709.0,
+      243.0
+    ],
+    [
+      513.0,
+      184.0
+    ],
+    [
+      833.0,
+      699.0
+    ],
+    [
+      627.0,
+      690.0
+    ],
+    [
+      651.0,
+      693.0
+    ],
+    [
+      556.0,
+      600.0
+    ],
+    [
+      767.0,
+      31.0
+    ],
+    [
+      998.0,
+      723.0
+    ],
+    [
+      451.0,
+      806.0
+    ],
+    [
+      455.0,
+      737.0
+    ],
+    [
+      497.0,
+      563.0
+    ],
+    [
+      578.0,
+      638.0
+    ],
+    [
+      802.0,
+      1070.0
+    ],
+    [
+      615.0,
+      968.0
+    ],
+    [
+      464.0,
+      1132.0
+    ],
+    [
+      829.0,
+      946.0
+    ],
+    [
+      481.0,
+      624.0
+    ]
+  ]<br><br>
+  Homography Matrix: [
+    [
+      1.2700904416948295,
+      0.0006724131678687396,
+      -391.9060654840439
+    ],
+    [
+      0.16624631433260056,
+      1.1731807067685804,
+      -121.54050854112073
+    ],
+    [
+      0.00026323016356595715,
+      -3.646899136483094e-06,
+      1.0
+    ]
+  ]
+</p>
+</section>
+
+<section id="p13">
+<h2>Image Rectification</span></h2>
+<p class="lead">Our next step was to test our billinear and nearest neighbor inverse warps with image Rectification. Both methods of inverse
+    warping led to similar results. Here are two rectified images, with the square portion we focused on.
+</p>
+<div class="grid">
+<figure>
+<img src="IMG_7319.jpg"  />
+<figcaption>Focused on a square floor.</figcaption>
+</figure>
+<figure>
+<img src="square.jpg"/>
+<figcaption>Rectified.</figcaption>
+</figure>
+</div>
+
+<div class="grid">
+<figure>
+<img src="IMG_7320.jpg"  />
+<figcaption>Focused on a square light panel.</figcaption>
+</figure>
+<figure>
+<img src="square2.jpg"/>
+<figcaption>Rectified.</figcaption>
+</figure>
+</div>
+</section>
+
+<section id="p14">
+<h2>Part 1.4 - Mosaics </span></h2>
+<p class="lead">Now, we move to mosaics. With rectification and mosaic, I used a strategy which tested the forward warp on each image to determine
+    the size of the canvas we would need. Then, after using billinear inverse warping on all images, we would blend them together using a 
+    simple gaussian mask. This mask ensures that each image only contributes "valid" pixels, and that the weight of the pixels would be less the farther
+    from the center it was. Here are 3 mosaics.
+</p>
+<div class="grid">
+<figure>
+<img src="mosaic_1.jpg"/>
+</figure>
+<figure>
+<img src="mosaic_2.jpg"/>
+</figure>
+<figure>
+<img src="mosaic_3.jpg"  />
+</figure>
+</div>
+<p>As we can see, the overall features blend pretty well. There is som blurriness near the camera. I believe this is from inaccurate correspondences
+    in the first mosaic, and simply moving parts in the second mosaic. I note that there were some issues trying to include all 3 pictures in the 
+    second and third mosaics, which are still being worked out.
+</p>
+</section>
+
+
+</body>
+</html>
