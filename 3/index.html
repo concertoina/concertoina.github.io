@@ -71,6 +71,10 @@ code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 
 <a href="#p12"><span>Part 1.2 — Recover Homographies</span></a>
 <a href="#p13"><span>Part 1.3 — Rectify Images</span></a>
 <a href="#p14"><span>Part 1.4 — Mosaics</span></a>
+<a href="#p21"><span>Part 2.1 — Harris and ANMS</span></a>
+<a href="#p22"><span>Part 2.2 — Feature Detection</span></a>
+<a href="#p23"><span>Part 2.3 — Feature Matching</span></a>
+<a href="#p24"><span>Part 2.4 — RANSAC Mosaic</span></a>
 </nav>
 </div>
 </header>
@@ -389,6 +393,99 @@ I took three sets of images, making sure that rotation was the only difference b
     in the first mosaic, and simply moving parts in the second mosaic. I note that there were some issues trying to include all 3 pictures in the 
     second and third mosaics, which are still being worked out.
 </p>
+</section>
+
+<section id="p21">
+<h2>Part 2.1 - Harris and ANMS </span></h2>
+<p class="lead">Here, we used the paper's described ANMS to spread out our feature points in the image. The paper noted a threshold for 
+  suppression, but I found that removing this threshold allowed my features to be better spread out. I believe this to be because 
+  several features of similar score were near each other in the sky, where there is little variation. Below are the harris corners and top 500
+  ANMS selected features for two images.
+</p>
+<div class="grid">
+<figure>
+<img src="harris_h copy.jpg"/>
+</figure>
+<figure>
+<img src="harris_a copy.jpg"/>
+</figure>
+<figure>
+<img src="harris_h2 copy.jpg"/>
+</figure>
+<figure>
+<img src="harris_a2 copy.jpg"/>
+</figure>
+</div>
+<p>As we can see, the ANMS has selected corners all around the images.
+</p>
+</section>
+
+<section id="p22">
+<h2>Part 2.2 - Feature Detection </span></h2>
+<p class="lead">After blurring the photo using a gaussian filter, we sampled every 5 pixels around each feature to get a descriptor patch.
+  A grid of patches is shown below.
+</p>
+<div class="grid">
+<figure>
+<img src="patch_grid copy.jpg">
+<figcaption> Grid of 16 descriptor patches.</figcaption>
+</figure>
+</div>
+</section>
+
+<section id="p23">
+<h2>Part 2.3 - Feature Matching </span></h2>
+<p class="lead">By comparing the patches for two different images, we can match patches using dist2 distance. We used the ratio
+  of the first and second best neighbors to determine what could be a "good match", using the threshold ratio less than .65. Below are the points with matches on images.
+</p>
+<div class="grid">
+<figure>
+<img src="match_1 copy.jpg">
+</figure>
+<figure>
+<img src="match_2 copy.jpg">
+</figure>
+<figure>
+<img src="match3_1 copy.jpg">
+</figure>
+<figure>
+<img src="match3_2 copy.jpg">
+</figure>
+</div>
+<p>We note that some matches are incorrect, like those in the sky. These will be dealt with with the last section.</p>
+</section>
+<section id="p24">
+<h2>Part 2.4 - RANSAC Mosaic. </span></h2>
+<p class="lead">To find the best homography, we take random samples of matches, calculate their homography, and determine the number
+  of inliners, or matches that are close with this test homography. After we find the best one (after 2000 iterations), we take those
+  inliners and compute the best homography there. This eliminates the false matches from odd parts of the image.
+</p>
+<div class="grid">
+<figure>
+<img src="automatic_1.jpg">
+<figcaption>Automatic Mosaic 1</figcaption>
+</figure>
+<figure>
+<img src = "mosaic_1.jpg">
+<figcaption>Manual Mosaic 1</figcaption>
+</figure>
+<figure>
+<img src="automatic_2 copy.jpg">
+<figcaption>Automatic Mosaic 2</figcaption>
+</figure>
+<figure>
+<img src = "mosaic_2.jpg">
+<figcaption>Manual Mosaic 2</figcaption>
+</figure>
+<figure>
+<img src="automatic_3 copy.jpg">
+<figcaption>Automatic Mosaic 3</figcaption>
+</figure>
+<figure>
+<img src = "mosaic_3.jpg">
+<figcaption>Manual Mosaic 3</figcaption>
+</figure>
+</div>
 </section>
 
 
