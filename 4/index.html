@@ -1,0 +1,155 @@
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root {
+--fg: #1f2937; /* slate-800 */
+--muted: #6b7280; /* gray-500 */
+--border: #e5e7eb; /* gray-200 */
+--link: #2563eb; /* blue-600 */
+}
+html, body { margin: 0; padding: 0; }
+body {
+font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+color: var(--fg);
+background: #fff;
+}
+.container { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+header { margin-bottom: 1.5rem; }
+h1 { font-size: 1.8rem; margin: 0 0 0.25rem; }
+header p { margin: 0; color: var(--muted); }
+
+nav { margin: 1rem 0 2rem; }
+nav a { margin-right: 1rem; color: var(--link); text-decoration: none; }
+nav a:hover { text-decoration: underline; }
+
+section { margin: 2rem 0; }
+h2 { font-size: 1.4rem; margin: 0 0 0.75rem; }
+h3 { font-size: 1.1rem; margin-top: 1.25rem; }
+p, li { max-width: 70ch; }
+
+/* Figures / images */
+figure { margin: 0; border: 1px solid var(--border); padding: 0.5rem; border-radius: 8px; background: #fff; }
+figure img { width: 100%; height: auto; display: block; }
+figcaption { margin-top: 0.5rem; font-size: 0.9rem; color: var(--muted); }
+
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+
+/* Tables */
+table { border-collapse: collapse; width: 100%; max-width: 100%; }
+th, td { border: 1px solid var(--border); padding: 8px; text-align: left; }
+th { background: #f9fafb; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+
+.note { color: var(--muted); font-size: 0.95rem; }
+.muted { color: var(--muted); }
+.small { font-size: 0.9rem; }
+
+
+/* Optional narrow layout tweak */
+@media (max-width: 640px) {
+.pair { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+
+<!--Start of Body-->
+<body>
+<header>
+<div class="wrap">
+<div class="title">
+<h1>Image Filtering & Multi‑Resolution Blending</h1>
+</div>
+<nav class="toc">
+<a href="#p0"><span>Part 0 — Images</span></a>
+<a href="#p1"><span>Part 1 — 1D Neural Network</span></a>
+<a href="#p1"><span>Part 2 — 2D Neural Network</span></a>
+
+</nav>
+</div>
+</header>
+
+<section id="p0">
+<h2>Images</h2>
+<p>
+To calibrate the cameras, I looped through calibration photos, and found the ArUco tags within. If the tags were found, they were added to
+object_corners, which were then passed in for calibration. Similarly, when dealing with the object, we looped through each photo for the tags,
+and solved the PnP problems for each. Screenshots of the viser simulation are below.
+<div class="grid">
+<figure>
+<img src="Screen Shot 2025-11-19 at 2.11.00 PM.png" />
+</figure>
+<figure>
+<img src="Screen Shot 2025-11-19 at 2.11.32 PM.png"  />
+</figure>
+</div>
+
+<section id="p1">
+<h2>1D Neural Network</h2>
+<p>
+Here, I implemented a 1D neural network. I used a hidden layer size of 256, and with four linear layers. We passed in a poistional encoding
+with 10 frequency bands, which including the original x/y are 42 inputs. After training for 2000 iterations, we got the following progress and
+loss.
+<div class="grid">
+<figure>
+<img src="fox_iter_0500.jpg" />
+<figcaption>Photo after 500 Iterations</figcaption>
+</figure>
+<figure>
+<img src="fox_iter_1000.jpg" />
+<figcaption>Photo after 1000 Iterations</figcaption>
+</figure>
+<figure>
+<img src="fox_iter_1500.jpg" />
+<figcaption>Photo after 1500 Iterations</figcaption>
+</figure>
+<figure>
+<img src="fox_iter_2000.jpg" />
+<figcaption>Photo after 2000 Iterations</figcaption>
+</figure>
+<figure>
+<img src="fox.jpg" />
+<figcaption>Original Photo</figcaption>
+</figure>
+<figure>
+<img src="psnr_curve_my_image.png" />
+<figcaption>PNSR Graph</figcaption>
+</figure>
+</div>
+<p>
+    We also varied the hyperparameters, using 2 frequences for the PE and a hidden layer size of 40. We can see the differences here.
+</p>
+<div class="grid">
+<figure>
+<img src="fox_2_40.jpg" />
+<figcaption>2 PE, 40 Width</figcaption>
+</figure>
+<figure>
+<img src="fox_2_256.jpg" />
+<figcaption>2 PE, 256 Width </figcaption>
+</figure>
+<figure>
+<img src="fox_10_40.jpg" />
+<figcaption>10 PE, 40 Width</figcaption>
+</figure>
+<figure>
+<img src="fox_iter_2000.jpg" />
+<figcaption>10 PE, 256 Width</figcaption>
+</div>
+<p>
+    I also ran this on other images I had. I had issues with unlocking Colab pro, so I ran out of RAM on many larger images with higher iterations.
+    This is the network after training on a sunset image.
+</p>
+<div class="grid">
+<figure>
+<img src="sunset_recon.jpg" />
+</figure>
+</div>
+
+<section id="p2">
+<h2>Volume Rendering</h2>
